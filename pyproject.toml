@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "lastfm-to-sqlite"
+version = "1.0.0"
+description = "Save data from last.fm/libre.fm to a SQLite database"
+authors = ["Jacob Kaplan-Moss <jacob@jacobian.org>"]
+license = "wtfpl"
+readme = "README.md"
+repository = "https://github.com/jacobian/lastfm-to-sqlite/"
+
+[tool.poetry.scripts]
+lastfm-to-sqlite = "lastfm_to_sqlite.cli:cli"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+pylast = "^3.1.0"
+sqlite-utils = "^1.12.1"
+click = "^7.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2.2"
+pytest-cov = "^2.8.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

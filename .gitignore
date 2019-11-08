@@ -1,0 +1,5 @@
+auth.json
+*.egg-info
+*.db
+.coverage
+.vscode/
