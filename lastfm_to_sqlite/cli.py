@@ -2,8 +2,8 @@ import click
 import os
 import json
 import sqlite_utils
-import pylast
 from . import lastfm
+import dateutil.parser
 
 
 @click.group()
@@ -82,57 +82,30 @@ def plays(database, auth, since, since_date):
     if since and since_date:
         raise click.UsageError("use either --since or --since-date, not both")
 
-    auth = json.load(open(auth))
-    if auth["lastfm_network"] == "lastfm":
-        network = pylast.LastFMNetwork(
-            api_key=auth["lastfm_api_key"],
-            api_secret=auth["lastfm_shared_secret"],
-            username=auth["lastfm_username"],
-        )
-    elif auth["lastfm_network"] == "librefm":
-        network = pylast.LibreFMNetwork(
-            api_key=auth["lastfm_api_key"],
-            api_secret=auth["lastfm_shared_secret"],
-            username=auth["lastfm_username"],
-        )
-    else:
-        raise click.ClickException(
-            f"invalid value for network: {auth['lastfm_network']}"
-        )
-
     db = sqlite_utils.Database(database)
-    artists = db.table(
-        "artists", pk="id", column_order=["id", "name"], not_null=["name"]
-    )
-    albums = db.table(
-        "albums",
-        pk="id",
-        column_order=["id", "artist_id", "title"],
-        foreign_keys=["artist_id"],
-        not_null=["id", "artist_id", "title"],
-    )
-    tracks = db.table(
-        "tracks",
-        pk="id",
-        column_order=["id", "album_id", "title"],
-        foreign_keys=["album_id"],
-        not_null=["id", "album_id", "title"],
-    )
-    plays = db.table(
-        "plays",
-        pk=["timestamp", "track_id"],
-        column_order=["timestamp", "track_id"],
-        foreign_keys=["track_id"],
+
+    if since and db["plays"].exists:
+        since_date = db.conn.execute("select max(timestamp) from plays").fetchone()[0]
+    if since_date:
+        since_date = dateutil.parser.parse(since_date)
+
+    auth = json.load(open(auth))
+    network = lastfm.get_network(
+        auth["lastfm_network"],
+        key=auth["lastfm_api_key"],
+        secret=auth["lastfm_shared_secret"],
     )
 
     user = network.get_user(auth["lastfm_username"])
     playcount = user.get_playcount()
-    history = lastfm.recent_tracks(user)
+    history = lastfm.recent_tracks(user, since_date)
+
+    # FIXME: the progress bar is wrong if there's a since_date
     with click.progressbar(
         history, length=playcount, label="Importing plays", show_pos=True
     ) as progress:
         for track in progress:
-            artists.upsert(track["artist"])
-            albums.upsert(track["album"])
-            tracks.upsert(track["track"])
-            plays.upsert(track["play"])
+            lastfm.save_artist(db, track["artist"])
+            lastfm.save_album(db, track["album"])
+            lastfm.save_track(db, track["track"])
+            lastfm.save_play(db, track["play"])
