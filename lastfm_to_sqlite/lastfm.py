@@ -55,6 +55,8 @@ def _extract_track_data(track: Node):
     album_title = pylast._extract(track, "album")
     album_mbid = track.getElementsByTagName("album")[0].getAttribute("mbid")
 
+    # TODO: could call track/album/artist.getInfo here, and get more info?
+
     # Handle missing titles
     if album_title is None:
         album_title = "(unknown album)"
@@ -90,32 +92,20 @@ def get_network(name: str, key: str, secret: str):
 
 
 def save_artist(db: Database, data: Dict):
-    artists = db.table(
-        "artists", pk="id", column_order=["id", "name"], not_null=["name"]
-    )
-    artists.upsert(data)
+    db["artists"].upsert(data, pk="id", column_order=["id", "name"], not_null=["name"])
 
 
 def save_album(db: Database, data: Dict):
-    albums = db.table(
-        "albums",
-        pk="id",
-        foreign_keys=["artist_id"],
-        not_null=["id", "artist_id", "title"],
+    db["albums"].upsert(
+        data, pk="id", foreign_keys=["artist_id"], not_null=["id", "artist_id", "title"]
     )
-    albums.upsert(data)
 
 
 def save_track(db: Database, data: Dict):
-    tracks = db.table(
-        "tracks",
-        pk="id",
-        foreign_keys=["album_id"],
-        not_null=["id", "album_id", "title"],
+    db["tracks"].upsert(
+        data, pk="id", foreign_keys=["album_id"], not_null=["id", "album_id", "title"]
     )
-    tracks.upsert(data)
 
 
 def save_play(db: Database, data: Dict):
-    plays = db.table("plays", pk=["timestamp", "track_id"], foreign_keys=["track_id"])
-    plays.upsert(data)
+    db["plays"].upsert(data, pk=["timestamp", "track_id"], foreign_keys=["track_id"])
